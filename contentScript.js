@@ -1,10 +1,5 @@
-(async () => {
-  const myTimeout = setTimeout(() => {
-    // let t1 = document.getElementsByClassName("card-body");
-    // let t2 = t1.item(4);
-    // console.log("object");
-    // console.log(t2);
-
+(() => {
+  function scriptRunner() {
     /**
      * Converts Date array into seconds
      * @param a1 pass data in [hh:mm:ss] format as per 24hr clock
@@ -61,7 +56,7 @@
         mm -= 60;
         hh++;
       }
-      return `${hh}h:${mm}mm`;
+      return `${hh}h:${mm}m`;
     }
 
     const cardBody = document.getElementsByClassName("card-body");
@@ -83,23 +78,88 @@
     const lastEffectiveHourString =
       latestLog.getElementsByTagName("span")[1].innerText;
 
+    // console.log(latestLog.getElementsByTagName("span")[1]);
     const lastEffectiveHourArr = [];
-    lastEffectiveHourArr.push(lastEffectiveHourString.split("h")[0]);
-    lastEffectiveHourArr.push(
-      lastEffectiveHourString.split("m +")[0].split(" ").pop()
-    );
 
-    const a1 = [...lastClockInArr];
-    let effectiveHours = [...lastEffectiveHourArr];
-    const diff = getDiff(a1);
-    effectiveHours = effectiveHours.map((m) => JSON.parse(m));
-    const finalTime = add(diff, effectiveHours);
+    let finalTime;
+
+    if (logData[logData.length - 1].innerText == "MISSING") {
+      lastEffectiveHourArr.push(lastEffectiveHourString.split("h")[0]);
+      lastEffectiveHourArr.push(
+        lastEffectiveHourString.split("m +")[0].split(" ").pop()
+      );
+      const a1 = [...lastClockInArr];
+      let effectiveHours = [...lastEffectiveHourArr];
+      const diff = getDiff(a1);
+      effectiveHours = effectiveHours.map((m) => JSON.parse(m));
+      finalTime = add(diff, effectiveHours);
+    } else {
+      finalTime = lastEffectiveHourString;
+    }
 
     console.log(finalTime);
 
-    const finalTimerDisplayEl = document.createElement("div");
-    finalTimerDisplayEl.innerText = finalTime;
+    function getElement(eleName) {
+      return document.createElement(eleName);
+    }
+
+    const finalTimerDisplayEl = getElement("div");
+
+    const div1 = getElement("div");
+    const div2 = getElement("div");
+    const div3 = getElement("div");
+
+    //Div1 container starts
+    const timerImg = getElement("img");
+    timerImg.src = chrome.runtime.getURL("assets/clock.png");
+    timerImg.width = "50";
+
+    div1.appendChild(timerImg);
+    //Div1 container ends
+
+    //Div2 container starts
+    const timerSpan = getElement("span");
+    timerSpan.innerText = finalTime;
+    timerSpan.style.fontWeight = "500";
+    timerSpan.style.fontSize = "18px";
+
+    div2.appendChild(timerSpan);
+    //Div2 container ends
+
+    //Div3 container starts
+    const refreshImg = getElement("img");
+    refreshImg.src = chrome.runtime.getURL("assets/refresh.png");
+    refreshImg.style.padding = "30px";
+    refreshImg.style.transitionDuration = "2000ms";
+    refreshImg.style.transform = "rotate(0deg)";
+    refreshImg.style.opacity = "0";
+
+    setTimeout(() => {
+      refreshImg.style.transform = "rotate(720deg)";
+      refreshImg.style.opacity = "1";
+    }, 10);
+
+    refreshImg.addEventListener("click", () => {
+      cardBody[2].removeChild(cardBody[2].lastChild);
+      scriptRunner();
+    });
+
+    div3.appendChild(refreshImg);
+    //Div3 container ends
+
+    finalTimerDisplayEl.appendChild(div1);
+    finalTimerDisplayEl.appendChild(div2);
+    finalTimerDisplayEl.appendChild(div3);
+
+    finalTimerDisplayEl.style.flexGrow = 1;
+    finalTimerDisplayEl.style.display = "flex";
+    finalTimerDisplayEl.style.alignItems = "center";
+    finalTimerDisplayEl.style.gap = "5px";
 
     cardBody[2].appendChild(finalTimerDisplayEl);
-  }, 5000);
+
+    latestLog.click();
+  }
+
+  setTimeout(scriptRunner, 5000);
 })();

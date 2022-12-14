@@ -39,7 +39,7 @@
       //Parsing given date String starts
       const time = lDate.pop();
       lDate = lDate.map((r, i) => {
-        return i == 0 && time == "PM" ? JSON.parse(r) + 12 : JSON.parse(r);
+        return i == 0 && time == "PM" ? parseInt(r) + 12 : parseInt(r);
       });
       //Parsing given date String ends
 
@@ -52,12 +52,26 @@
       let mm = diffArr[1] + eArr[1];
       let hh = diffArr[0] + eArr[0];
 
-      while (mm > 60) {
+      while (mm >= 60) {
         mm -= 60;
         hh++;
       }
-      return `${hh}h:${mm}m`;
+      // let finalRemain = expectedLeaveTime(hh, mm);
+      // console.log(finalRemain);
+      return `${hh}h : ${mm}m`;
     }
+
+    // function expectedLeaveTime(hh, mm) {
+    //   let finalhh = 8 - hh;
+    //   let finalmm = 15 - mm;
+
+    //   if (finalmm < 0) {
+    //     finalmm += 60;
+    //     finalhh--;
+    //   }
+
+    //   return `${finalhh}h : ${finalmm}m`;
+    // }
 
     const cardBody = document.getElementsByClassName("card-body");
 
@@ -78,7 +92,6 @@
     const lastEffectiveHourString =
       latestLog.getElementsByTagName("span")[1].innerText;
 
-    // console.log(latestLog.getElementsByTagName("span")[1]);
     const lastEffectiveHourArr = [];
 
     let finalTime;
@@ -91,7 +104,7 @@
       const a1 = [...lastClockInArr];
       let effectiveHours = [...lastEffectiveHourArr];
       const diff = getDiff(a1);
-      effectiveHours = effectiveHours.map((m) => JSON.parse(m));
+      effectiveHours = effectiveHours.map((m) => parseInt(m));
       finalTime = add(diff, effectiveHours);
     } else {
       finalTime = lastEffectiveHourString;
@@ -111,8 +124,8 @@
 
     //Div1 container starts
     const timerImg = getElement("img");
-    timerImg.src = chrome.runtime.getURL("assets/clock.png");
-    timerImg.width = "50";
+    timerImg.src = chrome.runtime.getURL("assets/clock.svg");
+    timerImg.width = "30";
 
     div1.appendChild(timerImg);
     //Div1 container ends
@@ -129,7 +142,8 @@
     //Div3 container starts
     const refreshImg = getElement("img");
     refreshImg.src = chrome.runtime.getURL("assets/refresh.png");
-    refreshImg.style.padding = "30px";
+    refreshImg.style.padding = "15px";
+    refreshImg.style.borderRadius = "50%";
     refreshImg.style.transitionDuration = "2000ms";
     refreshImg.style.transform = "rotate(0deg)";
     refreshImg.style.opacity = "0";

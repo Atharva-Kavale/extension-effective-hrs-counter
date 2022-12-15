@@ -158,6 +158,10 @@
       scriptRunner();
     });
 
+    refreshImg.addEventListener("mouseover", () => {
+      refreshImg.style.cursor = "pointer";
+    });
+
     div3.appendChild(refreshImg);
     //Div3 container ends
 

@@ -56,22 +56,8 @@
         mm -= 60;
         hh++;
       }
-      // let finalRemain = expectedLeaveTime(hh, mm);
-      // console.log(finalRemain);
       return `${hh}h : ${mm}m`;
     }
-
-    // function expectedLeaveTime(hh, mm) {
-    //   let finalhh = 8 - hh;
-    //   let finalmm = 15 - mm;
-
-    //   if (finalmm < 0) {
-    //     finalmm += 60;
-    //     finalhh--;
-    //   }
-
-    //   return `${finalhh}h : ${finalmm}m`;
-    // }
 
     const cardBody = document.getElementsByClassName("card-body");
 
@@ -81,7 +67,10 @@
         "d-flex align-items-center px-16 py-12 on-hover border-bottom"
       )[0];
 
-    latestLog.click();
+    if (!document.getElementsByClassName("open")[1]) {
+      latestLog.click();
+    }
+
     const logData = document
       .getElementsByClassName("open")[1]
       .querySelectorAll("span:not(.icon)");
@@ -90,8 +79,7 @@
     const lastClockInArr = temp[0].split(":");
     lastClockInArr.push(temp[1]);
     const lastEffectiveHourString =
-      latestLog.getElementsByTagName("span")[1].innerText;
-
+      latestLog.querySelectorAll("span:not([class])")[0].innerText;
     const lastEffectiveHourArr = [];
 
     let finalTime;
@@ -147,6 +135,7 @@
     refreshImg.style.transitionDuration = "2000ms";
     refreshImg.style.transform = "rotate(0deg)";
     refreshImg.style.opacity = "0";
+    refreshImg.style.cursor = "pointer";
 
     setTimeout(() => {
       refreshImg.style.transform = "rotate(720deg)";
@@ -156,10 +145,6 @@
     refreshImg.addEventListener("click", () => {
       cardBody[2].removeChild(cardBody[2].lastChild);
       scriptRunner();
-    });
-
-    refreshImg.addEventListener("mouseover", () => {
-      refreshImg.style.cursor = "pointer";
     });
 
     div3.appendChild(refreshImg);
@@ -179,5 +164,17 @@
     latestLog.click();
   }
 
-  setTimeout(scriptRunner, 5000);
+  function Executer() {
+    try {
+      scriptRunner();
+    } catch (error) {
+      console.log("Content is not ready");
+      setTimeout(() => {
+        console.log("Retrying.....");
+        Executer();
+      }, 1000);
+    }
+  }
+
+  setTimeout(Executer, 1000);
 })();

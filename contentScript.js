@@ -168,11 +168,10 @@
     try {
       scriptRunner();
     } catch (error) {
-      console.log("Content is not ready");
-      setTimeout(() => {
-        console.log("Retrying.....");
-        Executer();
-      }, 1000);
+      console.warn("DOM is not ready");
+      console.info("Retrying.....");
+
+      setTimeout(Executer, 1000);
     }
   }
 

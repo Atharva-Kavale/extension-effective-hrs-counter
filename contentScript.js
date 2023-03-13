@@ -73,7 +73,7 @@
 
     const logData = document
       .getElementsByClassName("open")[1]
-      .querySelectorAll("span:not(.icon)");
+      .querySelectorAll("span:not([class])");
     const lastClockInString = logData[logData.length - 2].innerText;
     const temp = lastClockInString.split(" ");
     const lastClockInArr = temp[0].split(":");

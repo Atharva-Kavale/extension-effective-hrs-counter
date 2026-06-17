@@ -2,7 +2,7 @@
   "name": "Keka Effective Hrs Counter",
   "version": "2.0.0",
   "description": "Calculate your total effective hours and find out final expected clock out time",
-  "permissions": ["tabs", "cookies"],
+  "permissions": ["tabs"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
@@ -22,8 +22,7 @@
       "24": "assets/ext-icon.png",
       "32": "assets/ext-icon.png"
     },
-    "default_title": "Keka Effective Hrs Counter",
-    "default_popup": "popup.html"
+    "default_title": "Keka Effective Hrs Counter"
   },
   "manifest_version": 3
 }

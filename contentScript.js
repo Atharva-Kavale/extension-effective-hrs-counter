@@ -24,6 +24,8 @@
   // ── XPath constants ───────────────────────────────────────────────────────
   const CARD_BODY_XPATH =
     '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/employee-attendance-stats/div/div[3]/employee-attendance-request-actions/div/div/div';
+  const LAST_LOG_BODY_XPATH =
+    '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/div/employee-attendance-logs/div/employee-attendance-list-view/div/div[2]/div[1]/div/div[1]';
   const LAST_LOG_XPATH =
     '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/div/employee-attendance-logs/div/employee-attendance-list-view/div/div[2]/div[1]/div/div[1]/div/div[2]/div/div[6]/div/span';
   const LOG_DATA_XPATH =
@@ -45,10 +47,10 @@
    * @param {string} path - A valid XPath expression
    * @returns {Node|null} The first matching node, or null if not found
    */
-  function getByXpath(path) {
+  function getByXpath(path, parentEle = document) {
     return document.evaluate(
       path,
-      document,
+      parentEle,
       null,
       XPathResult.FIRST_ORDERED_NODE_TYPE,
       null,
@@ -123,8 +125,13 @@
    * @returns {string|null} e.g. "6:30 PM"
    */
   function computeLogoutTime(fTime) {
+    let totalHours = 9;
+    if (getLastLogBody().getElementsByClassName("badge").length) {
+      totalHours = 5;
+    }
+
     const effectiveMins = parseInt(fTime) * 60 + parseInt(fTime.split(": ")[1]);
-    const remainingMins = 9 * 60 - effectiveMins;
+    const remainingMins = totalHours * 60 - effectiveMins;
     if (remainingMins <= 0) return null;
     const logout = new Date(Date.now() + (remainingMins + 1) * 60_000);
     return logout.toLocaleTimeString([], {
@@ -142,8 +149,13 @@
   }
 
   /** @returns {Element|null} The latest attendance log row element */
-  function getLatestLog() {
-    return getByXpath(LAST_LOG_XPATH);
+  function getLastLogBody() {
+    return getByXpath(LAST_LOG_BODY_XPATH);
+  }
+
+  /** @returns {Element|null} The latest attendance log row menu */
+  function getLatestLog(parentEle) {
+    return getByXpath(LAST_LOG_XPATH, parentEle);
   }
 
   /**
@@ -285,7 +297,15 @@
    */
   function scriptRunner() {
     const cardBody = getCardBody();
-    const latestLog = getLatestLog();
+
+    const lastLogBody = getLastLogBody();
+    if (!lastLogBody) {
+      throw new Error(
+        "Last log not found in DOM — is the attendance page fully loaded?",
+      );
+    }
+
+    const latestLog = getLatestLog(lastLogBody);
     const isUserLogged = !!latestLog;
 
     if (!isUserLogged) {

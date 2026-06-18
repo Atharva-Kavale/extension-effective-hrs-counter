@@ -1,226 +1,332 @@
 (() => {
-  function scriptRunner() {
-    /**
-     * Converts Date array into seconds
-     * @param a1 pass data in [hh:mm:ss] format as per 24hr clock
-     * @returns converted seconds from given date array in number format
-     */
-    function dateArrToSec(a1) {
-      let totalSec = 0;
+  // ── State ─────────────────────────────────────────────────────────────────
+  let count = 0;
 
-      totalSec += a1[0] * 60 * 60;
-      totalSec += a1[1] * 60;
-      totalSec += a1[2];
+  // ── Logger ────────────────────────────────────────────────────────────────
+  // Uses %c CSS styling so extension logs stand out from the site's own output.
+  const BADGE =
+    "background:#6366f1;color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;";
+  const TEXT = "color:#a5b4fc;font-weight:500;";
+  const WARN =
+    "background:#f59e0b;color:#000;padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;";
+  const ERROR =
+    "background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;";
 
-      return totalSec;
+  const logger = {
+    info: (...args) =>
+      console.log(`%c Keka Ext %c ${args[0]}`, BADGE, TEXT, ...args.slice(1)),
+    warn: (...args) =>
+      console.warn(`%c Keka Ext %c ${args[0]}`, WARN, TEXT, ...args.slice(1)),
+    error: (...args) =>
+      console.error(`%c Keka Ext %c ${args[0]}`, ERROR, TEXT, ...args.slice(1)),
+  };
+
+  // ── XPath constants ───────────────────────────────────────────────────────
+  const CARD_BODY_XPATH =
+    '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/employee-attendance-stats/div/div[3]/employee-attendance-request-actions/div/div/div';
+  const LAST_LOG_XPATH =
+    '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/div/employee-attendance-logs/div/employee-attendance-list-view/div/div[2]/div[1]/div/div[1]/div/div[2]/div/div[6]/div/span';
+  const LOG_DATA_XPATH =
+    '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/div/employee-attendance-logs/div/employee-attendance-list-view/div/div[2]/div[1]/div/div[2]/div/div[2]/div[2]/div/div[2]/div';
+
+  // ── DOM utility helpers ───────────────────────────────────────────────────
+
+  /**
+   * Creates and returns a new DOM element of the given tag name.
+   * @param {string} tag - A valid HTML tag name (e.g. "div", "span", "img")
+   * @returns {HTMLElement}
+   */
+  function createElement(tag) {
+    return document.createElement(tag);
+  }
+
+  /**
+   * Queries the document for a single node using an XPath expression.
+   * @param {string} path - A valid XPath expression
+   * @returns {Node|null} The first matching node, or null if not found
+   */
+  function getByXpath(path) {
+    return document.evaluate(
+      path,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null,
+    ).singleNodeValue;
+  }
+
+  // ── Pure time helpers ─────────────────────────────────────────────────────
+
+  /**
+   * Converts a time array into total seconds.
+   * @param {number[]} a1 - Time in [hh, mm, ss] format as per 24hr clock
+   * @returns {number} Total seconds
+   */
+  function dateArrToSec(a1) {
+    return a1[0] * 60 * 60 + a1[1] * 60 + a1[2];
+  }
+
+  /**
+   * Converts total seconds into a [hours, minutes] array.
+   * @param {number} totalSec - Seconds to convert
+   * @returns {[number, number]} Time as [hh, mm]
+   */
+  function secToDateArr(totalSec) {
+    const hh = Math.floor(totalSec / 60 / 60);
+    const mm = Math.floor(totalSec / 60 - hh * 60);
+    return [hh, mm];
+  }
+
+  /**
+   * Returns the elapsed time between a given clock-in time and now.
+   * @param {string[]} lDate - Clock-in parts in ["HH", "MM", "SS", "AM|PM"] format
+   * @returns {[number, number]} Elapsed time as [hours, minutes]
+   */
+  function getDiff(lDate) {
+    // Snapshot current time once to avoid inconsistency across calls
+    const now = new Date();
+    const cDate = [now.getHours(), now.getMinutes(), now.getSeconds()];
+
+    // Parse the clock-in parts without mutating the original array
+    const parts = [...lDate];
+    const period = parts.pop(); // "AM" or "PM"
+    const normalizedDate = parts.map((r, i) =>
+      i === 0 && period === "PM" ? parseInt(r) + 12 : parseInt(r),
+    );
+
+    const previousSeconds = dateArrToSec(normalizedDate);
+    const currentSeconds = dateArrToSec(cDate);
+    return secToDateArr(currentSeconds - previousSeconds);
+  }
+
+  /**
+   * Adds two [hours, minutes] tuples and returns a formatted time string.
+   * @param {[number, number]} diffArr - Elapsed time as [hours, minutes]
+   * @param {[number, number]} eArr    - Effective hours as [hours, minutes]
+   * @returns {string} Formatted result, e.g. "9h : 30m"
+   */
+  function sumHoursMinutes(diffArr, eArr) {
+    let mm = diffArr[1] + eArr[1];
+    let hh = diffArr[0] + eArr[0];
+
+    while (mm >= 60) {
+      mm -= 60;
+      hh++;
+    }
+    return `${hh}h : ${mm}m`;
+  }
+
+  /**
+   * Returns the suggested logout time so the total effective hours reach 9h.
+   * Formula: now + (9h − fTime). Returns null if 9h already done.
+   * @param {string} fTime - e.g. "7h : 45m"
+   * @returns {string|null} e.g. "6:30 PM"
+   */
+  function computeLogoutTime(fTime) {
+    const effectiveMins = parseInt(fTime) * 60 + parseInt(fTime.split(": ")[1]);
+    const remainingMins = 9 * 60 - effectiveMins;
+    if (remainingMins <= 0) return null;
+    const logout = new Date(Date.now() + (remainingMins + 1) * 60_000);
+    return logout.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  // ── DOM queries ───────────────────────────────────────────────────────────
+
+  /** @returns {Element|null} The stats card body container */
+  function getCardBody() {
+    return getByXpath(CARD_BODY_XPATH);
+  }
+
+  /** @returns {Element|null} The latest attendance log row element */
+  function getLatestLog() {
+    return getByXpath(LAST_LOG_XPATH);
+  }
+
+  /**
+   * Returns the span elements from the expanded log data container.
+   * @returns {NodeList} Span elements inside the log data container
+   */
+  function getLogData() {
+    return getByXpath(LOG_DATA_XPATH).querySelectorAll("span.ng-star-inserted");
+  }
+
+  // ── Parsing ───────────────────────────────────────────────────────────────
+
+  /**
+   * Extracts the last clock-in time from log data as a parseable string array.
+   * @param {NodeList} logData - Span elements from the log data container
+   * @returns {string[]} Parts in ["HH", "MM", "SS", "AM|PM"] format
+   */
+  function parseClockIn(logData) {
+    const clockInString = logData[logData.length - 2].innerText;
+    const [timePart, period] = clockInString.split(" ");
+    const parts = timePart.split(":");
+    parts.push(period);
+    return parts;
+  }
+
+  /**
+   * Computes the final effective hours to display and the suggested logout time.
+   * If the last log entry is "MISSING" (user is still clocked in), adds the
+   * elapsed time since clock-in to the existing effective hours.
+   * Otherwise returns the completed effective hours string as-is.
+   * @param {NodeList} logData - Span elements from the log data container
+   * @returns {{ fTime: string, logoutTime: string|null }}
+   */
+  function computeFinalTime(logData) {
+    const effectiveHourString = document
+      .getElementsByClassName("open")[0]
+      .querySelectorAll("span:not([class])")[0].innerText;
+
+    if (logData[logData.length - 1].innerText === "MISSING") {
+      const clockInArr = parseClockIn(logData);
+      const effectiveHours = [
+        parseInt(effectiveHourString.split("h")[0]),
+        parseInt(effectiveHourString.split("m +")[0].split(" ").pop()),
+      ];
+      const fTime = sumHoursMinutes(getDiff(clockInArr), effectiveHours);
+      return {
+        fTime,
+        logoutTime: computeLogoutTime(fTime), // based on total effective hrs
+      };
     }
 
-    /**
-     * Converts seconds into date array
-     * @param totalSec pass seconds in number format
-     * @returns converted data array in [hh:mm] format as per 24hr clock
-     */
-    function secToDateArr(totalSec) {
-      let hh = Math.floor(totalSec / 60 / 60);
-      let mm = Math.floor(totalSec / 60 - hh * 60);
+    return { fTime: effectiveHourString, logoutTime: null };
+  }
 
-      return [hh, mm];
-    }
+  // ── Rendering ─────────────────────────────────────────────────────────────
 
-    function getDiff(lDate) {
-      //Getting Current Time Starts
-      const cDate = [];
-
-      cDate.push(new Date().getHours());
-      cDate.push(new Date().getMinutes());
-      cDate.push(new Date().getSeconds());
-      //Getting Current Time Ends
-
-      //Parsing given date String starts
-      const time = lDate.pop();
-      lDate = lDate.map((r, i) => {
-        return i == 0 && time == "PM" ? parseInt(r) + 12 : parseInt(r);
-      });
-      //Parsing given date String ends
-
-      const previousSeconds = dateArrToSec(lDate);
-      const currentSeconds = dateArrToSec(cDate);
-      return secToDateArr(currentSeconds - previousSeconds);
-    }
-
-    function add(diffArr, eArr) {
-      let mm = diffArr[1] + eArr[1];
-      let hh = diffArr[0] + eArr[0];
-
-      while (mm >= 60) {
-        mm -= 60;
-        hh++;
-      }
-      return `${hh}h : ${mm}m`;
-    }
-
-    function getByXpath(path) {
-      return document.evaluate(
-        path,
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null,
-      ).singleNodeValue;
-    }
-
-    function paintToDOM(flagLog, fTime, cBody) {
-      if (!cBody) {
-        console.log("cardbody is not present");
-        return;
-      }
-
-      if (cBody.children.length > 1) {
-        cBody.removeChild(cBody.lastChild);
-      }
-
-      const finalTimerDisplayEl = getElement("div");
-
-      const div1 = getElement("div");
-      const div2 = getElement("div");
-      const div3 = getElement("div");
-
-      //Div1 container starts
-      const timerImg = getElement("img");
-      timerImg.src = chrome.runtime.getURL("assets/clock.svg");
-      timerImg.width = "30";
-
-      div1.appendChild(timerImg);
-      //Div1 container ends
-
-      //Div2 container starts
-      const timerSpan = getElement("span");
-      timerSpan.innerText = flagLog ? fTime : "User not logged yet";
-      timerSpan.style.fontWeight = "500";
-      timerSpan.style.fontSize = "18px";
-
-      div2.appendChild(timerSpan);
-      //Div2 container ends
-
-      //Div3 container starts
-      const refreshImg = getElement("img");
-      refreshImg.src = chrome.runtime.getURL("assets/refresh.png");
-      refreshImg.style.padding = "15px";
-      refreshImg.style.borderRadius = "50%";
-      refreshImg.style.transitionDuration = "2000ms";
-      refreshImg.style.transform = "rotate(0deg)";
-      refreshImg.style.opacity = "0";
-      refreshImg.style.cursor = "pointer";
-
-      setTimeout(() => {
-        refreshImg.style.transform = "rotate(720deg)";
-        refreshImg.style.opacity = "1";
-      }, 10);
-
-      refreshImg.addEventListener("click", () => {
-        cBody.removeChild(cBody.lastChild);
-        scriptRunner();
-      });
-
-      div3.appendChild(refreshImg);
-      //Div3 container ends
-
-      finalTimerDisplayEl.appendChild(div1);
-      finalTimerDisplayEl.appendChild(div2);
-      finalTimerDisplayEl.appendChild(div3);
-
-      finalTimerDisplayEl.style.flexGrow = 1;
-      finalTimerDisplayEl.style.display = "flex";
-      finalTimerDisplayEl.style.alignItems = "center";
-      finalTimerDisplayEl.style.gap = "5px";
-
-      cBody.appendChild(finalTimerDisplayEl);
-    }
-
-    const cardBodyXpath =
-      '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/employee-attendance-stats/div/div[3]/employee-attendance-request-actions/div/div/div';
-    const cardBody = getByXpath(cardBodyXpath);
-
-    const lastLogXpath =
-      '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/div/employee-attendance-logs/div/employee-attendance-list-view/div/div[2]/div[1]/div/div[1]/div/div[2]/div/div[6]/div/span';
-    const latestLog = getByXpath(lastLogXpath);
-
-    let isUserLogged = !!latestLog;
-
-    if (!isUserLogged) {
-      paintToDOM(isUserLogged, "", cardBody);
+  /**
+   * Builds and injects the effective-hours display widget into the card body.
+   * Removes any previously injected widget before re-rendering.
+   * @param {boolean}     flagLog    - Whether the user has a clock-in log today
+   * @param {string}      fTime      - Formatted time string to display (e.g. "8h : 30m")
+   * @param {string|null} logoutTime - Suggested logout time in AM/PM (e.g. "6:30 PM"), or null
+   * @param {Element}     cBody      - The card-body DOM element to render into
+   */
+  function paintToDOM(flagLog, fTime, logoutTime, cBody) {
+    if (!cBody) {
+      logger.warn(
+        "Card body not found in DOM — is the attendance page fully loaded?",
+      );
       return;
     }
 
-    if (!document.getElementsByClassName("open")[1] && isUserLogged) {
+    if (cBody.children.length > 1) {
+      cBody.removeChild(cBody.lastChild);
+    }
+
+    const wrapper = createElement("div");
+
+    const finalTimerDisplayEl = createElement("div");
+    const div1 = createElement("div");
+    const div2 = createElement("div");
+    const div3 = createElement("div");
+
+    const logoutTimeEl = createElement("div");
+
+    // Div1: clock icon
+    const timerImg = createElement("img");
+    timerImg.src = chrome.runtime.getURL("assets/clock.svg");
+    timerImg.width = "30";
+    div1.appendChild(timerImg);
+
+    // Div2: time label
+    const timerSpan = createElement("span");
+    timerSpan.innerText = flagLog ? fTime : "User not logged yet";
+    timerSpan.className = "keka-ext-label";
+    div2.appendChild(timerSpan);
+
+    // Div3: refresh button
+    const refreshImg = createElement("img");
+    refreshImg.src = chrome.runtime.getURL("assets/refresh.png");
+    refreshImg.className = "keka-ext-btn";
+
+    // Double requestAnimationFrame ensures the browser has painted the
+    // initial state (opacity:0, rotate:0) before the transition fires.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => refreshImg.classList.add("spin"));
+    });
+
+    refreshImg.addEventListener("click", () => {
+      cBody.removeChild(cBody.lastChild);
+      scriptRunner();
+    });
+    div3.appendChild(refreshImg);
+
+    finalTimerDisplayEl.appendChild(div1);
+    finalTimerDisplayEl.appendChild(div2);
+    finalTimerDisplayEl.appendChild(div3);
+    finalTimerDisplayEl.className = "keka-ext-row";
+
+    logoutTimeEl.className = "keka-ext-logout-time";
+    if (logoutTime) {
+      logoutTimeEl.innerText = `Logout time : ${logoutTime}`;
+    } else {
+      logoutTimeEl.innerText = "";
+      logoutTimeEl.style.display = "none";
+    }
+
+    wrapper.appendChild(finalTimerDisplayEl);
+    wrapper.appendChild(logoutTimeEl);
+
+    cBody.appendChild(wrapper);
+  }
+
+  // ── Orchestrator ──────────────────────────────────────────────────────────
+
+  /**
+   * Queries the DOM for attendance data and renders the effective-hours widget.
+   * Handles both the "still clocked in" (MISSING) and "clocked out" states.
+   */
+  function scriptRunner() {
+    const cardBody = getCardBody();
+    const latestLog = getLatestLog();
+    const isUserLogged = !!latestLog;
+
+    if (!isUserLogged) {
+      paintToDOM(false, "", null, cardBody);
+      return;
+    }
+
+    if (!document.getElementsByClassName("open")[1]) {
       latestLog.click();
     }
 
-    const logDataXpath =
-      '//*[@id="preload"]/xhr-app-root/div/employee-me/div/employee-attendance/div/div/div/div/div/employee-attendance-logs/div/employee-attendance-list-view/div/div[2]/div[1]/div/div[2]/div/div[2]/div[2]/div/div[2]/div';
-
-    const logData = getByXpath(logDataXpath).querySelectorAll(
-      "span.ng-star-inserted",
-    );
-
-    const lastClockInString = logData[logData.length - 2].innerText;
-    const temp = lastClockInString.split(" ");
-    const lastClockInArr = temp[0].split(":");
-    lastClockInArr.push(temp[1]);
-
-    const lastEffectiveHourString = document
-      .getElementsByClassName("open")[0]
-      .querySelectorAll("span:not([class])")[0].innerText;
-    const lastEffectiveHourArr = [];
-
-    let finalTime = 0;
-
-    if (logData[logData.length - 1].innerText == "MISSING") {
-      lastEffectiveHourArr.push(lastEffectiveHourString.split("h")[0]);
-      lastEffectiveHourArr.push(
-        lastEffectiveHourString.split("m +")[0].split(" ").pop(),
-      );
-      const a1 = [...lastClockInArr];
-      let effectiveHours = [...lastEffectiveHourArr];
-      const diff = getDiff(a1);
-      effectiveHours = effectiveHours.map((m) => parseInt(m));
-      finalTime = add(diff, effectiveHours);
-    } else {
-      finalTime = lastEffectiveHourString;
-    }
-
-    function getElement(eleName) {
-      return document.createElement(eleName);
-    }
-
-    paintToDOM(isUserLogged, finalTime, cardBody);
-
+    const logData = getLogData();
+    const { fTime, logoutTime } = computeFinalTime(logData);
+    paintToDOM(isUserLogged, fTime, logoutTime, cardBody);
     latestLog.click();
   }
+
+  // ── Retry logic ───────────────────────────────────────────────────────────
 
   function Executer() {
     try {
       scriptRunner();
     } catch (error) {
-      console.warn("Unkown error to DOM", count);
-      console.log("Retrying...");
+      logger.error(`Unknown error (attempt ${count + 1}/10)`, error);
+      logger.info("Retrying...");
       count++;
       if (count < 10) setTimeout(Executer, 1000);
     }
   }
 
-  let count = 0,
-    flag = -1;
+  // ── Entry point ───────────────────────────────────────────────────────────
+
+  function handleUrlChange(currentUrl) {
+    if (currentUrl.endsWith("#/me/attendance/logs")) {
+      logger.info("URL matched — starting script...");
+      setTimeout(Executer, 1000);
+    }
+  }
 
   // Listen for dynamic URL changes
   navigation.addEventListener("navigatesuccess", () => {
     handleUrlChange(window.location.href);
   });
-
-  function handleUrlChange(currentUrl) {
-    if (currentUrl.slice(-20) == "#/me/attendance/logs") {
-      console.log("URL matched, starting script...");
-      setTimeout(Executer, 1000);
-    }
-  }
 })();

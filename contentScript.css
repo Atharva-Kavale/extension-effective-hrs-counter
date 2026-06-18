@@ -1,0 +1,31 @@
+/* ── Keka Effective Hrs Counter — Extension Styles ──────────────────────── */
+
+/* Wrapper row injected into the attendance stats card */
+.keka-ext-row {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Effective hours time label */
+.keka-ext-label {
+  font-weight: 500;
+  font-size: 18px;
+}
+
+/* Refresh button — starts invisible at 0° rotation */
+.keka-ext-btn {
+  padding: 15px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 2000ms, opacity 2000ms;
+  transform: rotate(0deg);
+  opacity: 0;
+}
+
+/* Spin animation state — triggered via classList.add("spin") */
+.keka-ext-btn.spin {
+  transform: rotate(720deg);
+  opacity: 1;
+}

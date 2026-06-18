@@ -119,17 +119,14 @@
   }
 
   /**
-   * Returns the suggested logout time so the total effective hours reach 9h.
-   * Formula: now + (9h − fTime). Returns null if 9h already done.
-   * @param {string} fTime - e.g. "7h : 45m"
-   * @returns {string|null} e.g. "6:30 PM"
+   * Returns the suggested logout time so the total effective hours reach the target.
+   * Formula: now + (target − fTime). Returns null if target already met.
+   * @param {string}  fTime     - e.g. "7h : 45m"
+   * @param {boolean} isHalfDay - true if a half-day badge is present (target = 5h, else 9h)
+   * @returns {string|null} e.g. "6:30 PM", or null if target already met
    */
-  function computeLogoutTime(fTime) {
-    let totalHours = 9;
-    if (getLastLogBody().getElementsByClassName("badge").length) {
-      totalHours = 5;
-    }
-
+  function computeLogoutTime(fTime, isHalfDay) {
+    const totalHours = isHalfDay ? 5 : 9;
     const effectiveMins = parseInt(fTime) * 60 + parseInt(fTime.split(": ")[1]);
     const remainingMins = totalHours * 60 - effectiveMins;
     if (remainingMins <= 0) return null;
@@ -194,6 +191,9 @@
       .getElementsByClassName("open")[0]
       .querySelectorAll("span:not([class])")[0].innerText;
 
+    // Resolve half-day status here (DOM concern) before passing to pure computation
+    const isHalfDay = !!getLastLogBody()?.getElementsByClassName("badge").length;
+
     if (logData[logData.length - 1].innerText === "MISSING") {
       const clockInArr = parseClockIn(logData);
       const effectiveHours = [
@@ -203,7 +203,7 @@
       const fTime = sumHoursMinutes(getDiff(clockInArr), effectiveHours);
       return {
         fTime,
-        logoutTime: computeLogoutTime(fTime), // based on total effective hrs
+        logoutTime: computeLogoutTime(fTime, isHalfDay),
       };
     }
 
@@ -233,6 +233,7 @@
     }
 
     const wrapper = createElement("div");
+    wrapper.className = "keka-ext-wrapper";
 
     const finalTimerDisplayEl = createElement("div");
     const div1 = createElement("div");
@@ -280,7 +281,7 @@
       logoutTimeEl.innerText = `Logout time : ${logoutTime}`;
     } else {
       logoutTimeEl.innerText = "";
-      logoutTimeEl.style.display = "none";
+      logoutTimeEl.classList.add("hidden");
     }
 
     wrapper.appendChild(finalTimerDisplayEl);
@@ -325,14 +326,14 @@
 
   // ── Retry logic ───────────────────────────────────────────────────────────
 
-  function Executer() {
+  function runWithRetry() {
     try {
       scriptRunner();
     } catch (error) {
       logger.error(`Unknown error (attempt ${count + 1}/10)`, error);
       logger.info("Retrying...");
       count++;
-      if (count < 10) setTimeout(Executer, 1000);
+      if (count < 10) setTimeout(runWithRetry, 1000);
     }
   }
 
@@ -340,8 +341,9 @@
 
   function handleUrlChange(currentUrl) {
     if (currentUrl.endsWith("#/me/attendance/logs")) {
+      count = 0; // reset retry counter on every fresh navigation
       logger.info("URL matched — starting script...");
-      setTimeout(Executer, 1000);
+      setTimeout(runWithRetry, 1000);
     }
   }
 

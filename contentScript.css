@@ -29,3 +29,22 @@
   transform: rotate(720deg);
   opacity: 1;
 }
+
+/* Outer wrapper — stacks the time row and logout line vertically */
+.keka-ext-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+/* Suggested logout time line */
+.keka-ext-logout-time {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* Utility — hides an element without touching inline styles */
+.keka-ext-logout-time.hidden {
+  display: none;
+}

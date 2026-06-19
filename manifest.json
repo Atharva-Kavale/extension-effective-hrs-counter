@@ -3,6 +3,12 @@
   "version": "2.0.0",
   "description": "Calculate your total effective hours and find out final expected clock out time",
   "host_permissions": ["https://*.keka.com/*"],
+  "icons": {
+    "16": "assets/ext-icon-16.png",
+    "32": "assets/ext-icon-32.png",
+    "48": "assets/ext-icon-48.png",
+    "128": "assets/ext-icon.png"
+  },
   "content_scripts": [
     {
       "matches": ["https://*.keka.com/*"],
@@ -12,15 +18,22 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/clock.svg", "assets/refresh.png"],
+      "resources": [
+        "assets/clock.svg",
+        "assets/refresh.png",
+        "assets/ext-icon-16.png",
+        "assets/ext-icon-32.png",
+        "assets/ext-icon-48.png",
+        "assets/ext-icon.png"
+      ],
       "matches": ["https://*.keka.com/*"]
     }
   ],
   "action": {
     "default_icon": {
-      "16": "assets/ext-icon.png",
-      "24": "assets/ext-icon.png",
-      "32": "assets/ext-icon.png"
+      "16": "assets/ext-icon-16.png",
+      "32": "assets/ext-icon-32.png",
+      "48": "assets/ext-icon-48.png"
     },
     "default_title": "Keka Effective Hrs Counter"
   },

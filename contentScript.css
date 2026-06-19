@@ -1,6 +1,13 @@
 /* ── Keka Effective Hrs Counter — Extension Styles ──────────────────────── */
 
-/* Wrapper row injected into the attendance stats card */
+/* Outer wrapper — stacks the time row and logout line vertically */
+.keka-ext-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+/* Inner row — clock icon, time label, and refresh button side by side */
 .keka-ext-row {
   flex-grow: 1;
   display: flex;
@@ -19,7 +26,9 @@
   padding: 15px;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 2000ms, opacity 2000ms;
+  transition:
+    transform 2000ms,
+    opacity 2000ms;
   transform: rotate(0deg);
   opacity: 0;
 }
@@ -30,13 +39,6 @@
   opacity: 1;
 }
 
-/* Outer wrapper — stacks the time row and logout line vertically */
-.keka-ext-wrapper {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-}
-
 /* Suggested logout time line */
 .keka-ext-logout-time {
   font-size: 13px;
@@ -44,7 +46,7 @@
   margin-top: 2px;
 }
 
-/* Utility — hides an element without touching inline styles */
+/* Utility — hides the logout row when no logout time is available */
 .keka-ext-logout-time.hidden {
   display: none;
 }

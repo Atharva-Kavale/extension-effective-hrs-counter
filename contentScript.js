@@ -44,7 +44,8 @@
 
   /**
    * Queries the document for a single node using an XPath expression.
-   * @param {string} path - A valid XPath expression
+   * @param {string} path              - A valid XPath expression
+   * @param {Node}   [parentEle=document] - Root node to evaluate against
    * @returns {Node|null} The first matching node, or null if not found
    */
   function getByXpath(path, parentEle = document) {
@@ -192,7 +193,8 @@
       .querySelectorAll("span:not([class])")[0].innerText;
 
     // Resolve half-day status here (DOM concern) before passing to pure computation
-    const isHalfDay = !!getLastLogBody()?.getElementsByClassName("badge").length;
+    const isHalfDay =
+      !!getLastLogBody()?.getElementsByClassName("badge").length;
 
     if (logData[logData.length - 1].innerText === "MISSING") {
       const clockInArr = parseClockIn(logData);
@@ -280,7 +282,6 @@
     if (logoutTime) {
       logoutTimeEl.innerText = `Logout time : ${logoutTime}`;
     } else {
-      logoutTimeEl.innerText = "";
       logoutTimeEl.classList.add("hidden");
     }
 
@@ -326,6 +327,10 @@
 
   // ── Retry logic ───────────────────────────────────────────────────────────
 
+  /**
+   * Wraps scriptRunner() in a try/catch and retries up to 10 times (1 s apart).
+   * Handles the common case where the Angular SPA hasn't fully rendered yet.
+   */
   function runWithRetry() {
     try {
       scriptRunner();
@@ -339,6 +344,11 @@
 
   // ── Entry point ───────────────────────────────────────────────────────────
 
+  /**
+   * Triggers the script when the URL matches the attendance logs page.
+   * Resets the retry counter so retries are always available on fresh navigation.
+   * @param {string} currentUrl - The full URL after navigation
+   */
   function handleUrlChange(currentUrl) {
     if (currentUrl.endsWith("#/me/attendance/logs")) {
       count = 0; // reset retry counter on every fresh navigation

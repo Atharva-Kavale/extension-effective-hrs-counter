@@ -20,14 +20,14 @@
 
 ## ✨ Features
 
-| Feature | Description |
-|---|---|
-| 🕐 **Live Effective Hours** | Calculates and displays your total effective hours in real-time |
-| 🚪 **Suggested Logout Time** | Tells you exactly when to leave to complete 9h (or 5h on half-days) |
-| 🔄 **Refresh Button** | Manually re-triggers the calculation without a page reload |
-| 📅 **Half-Day Support** | Automatically detects badge half-day markers and targets 5h instead of 9h |
-| 🔁 **Auto-Retry** | Retries up to 10 times (1 s apart) if the page hasn't fully loaded yet |
-| 🌐 **SPA-Aware** | Listens to `navigatesuccess` to work correctly with Keka's Angular SPA routing |
+| Feature                      | Description                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| 🕐 **Live Effective Hours**  | Calculates and displays your total effective hours in real-time                |
+| 🚪 **Suggested Logout Time** | Tells you exactly when to leave to complete 9h (or 5h on half-days)            |
+| 🔄 **Refresh Button**        | Manually re-triggers the calculation without a page reload                     |
+| 📅 **Half-Day Support**      | Automatically detects badge half-day markers and targets 5h instead of 9h      |
+| 🔁 **Auto-Retry**            | Retries up to 10 times (1 s apart) if the page hasn't fully loaded yet         |
+| 🌐 **SPA-Aware**             | Listens to `navigatesuccess` to work correctly with Keka's Angular SPA routing |
 
 ---
 
@@ -125,11 +125,11 @@ let count = 0; // retry counter (max 10)
 
 A styled console logger that prefixes every message with a coloured badge so extension logs are instantly distinguishable from the site's own console output.
 
-| Level | Badge colour | Method |
-|---|---|---|
-| `info` | 🟣 Indigo | `logger.info(...)` |
-| `warn` | 🟡 Amber | `logger.warn(...)` |
-| `error` | 🔴 Red | `logger.error(...)` |
+| Level   | Badge colour | Method              |
+| ------- | ------------ | ------------------- |
+| `info`  | 🟣 Indigo    | `logger.info(...)`  |
+| `warn`  | 🟡 Amber     | `logger.warn(...)`  |
+| `error` | 🔴 Red       | `logger.error(...)` |
 
 ---
 
@@ -137,12 +137,12 @@ A styled console logger that prefixes every message with a coloured badge so ext
 
 Four XPath expressions target specific Angular-rendered DOM nodes on the Keka attendance page:
 
-| Constant | Points to |
-|---|---|
-| `CARD_BODY_XPATH` | The stats card container where the widget is injected |
-| `LAST_LOG_BODY_XPATH` | The wrapper element holding today's log rows |
-| `LAST_LOG_XPATH` | The clickable span of the latest log row |
-| `LOG_DATA_XPATH` | The expanded detail container with clock-in/out spans |
+| Constant              | Points to                                             |
+| --------------------- | ----------------------------------------------------- |
+| `CARD_BODY_XPATH`     | The stats card container where the widget is injected |
+| `LAST_LOG_BODY_XPATH` | The wrapper element holding today's log rows          |
+| `LAST_LOG_XPATH`      | The clickable span of the latest log row              |
+| `LOG_DATA_XPATH`      | The expanded detail container with clock-in/out spans |
 
 > [!WARNING]
 > These XPaths are tightly coupled to Keka's DOM structure. If Keka updates their Angular templates, these may break and will need updating.
@@ -152,9 +152,11 @@ Four XPath expressions target specific Angular-rendered DOM nodes on the Keka at
 ### 🟢 DOM Utility Helpers
 
 #### `createElement(tag)`
+
 Thin wrapper around `document.createElement`.
 
 #### `getByXpath(path, parentEle = document)`
+
 Evaluates an XPath expression and returns the first matching node.
 
 > [!NOTE]
@@ -166,12 +168,15 @@ Evaluates an XPath expression and returns the first matching node.
 ### 🔵 Pure Time Helpers
 
 #### `dateArrToSec([hh, mm, ss])` → `number`
+
 Converts a `[hours, minutes, seconds]` array to total seconds.
 
 #### `secToDateArr(totalSec)` → `[hh, mm]`
+
 Converts total seconds back to a `[hours, minutes]` tuple.
 
 #### `getDiff(lDate)` → `[hh, mm]`
+
 Computes elapsed time between a given AM/PM clock-in time string and **now**.
 
 ```
@@ -180,6 +185,7 @@ Output: [7, 45]   // if current time is 5:15 PM
 ```
 
 #### `sumHoursMinutes(diffArr, eArr)` → `string`
+
 Adds two `[hh, mm]` tuples (with minute carry-over) and returns `"Xh : Ym"`.
 
 #### `computeLogoutTime(fTime, isHalfDay)` → `string | null`
@@ -202,21 +208,23 @@ Returns null if the target has already been exceeded.
 
 ### 🟡 DOM Queries
 
-| Function | Returns |
-|---|---|
-| `getCardBody()` | The stats card container element |
-| `getLastLogBody()` | The today's log section wrapper |
-| `getLatestLog(parentEle)` | The latest log row's clickable span |
-| `getLogData()` | NodeList of `span.ng-star-inserted` inside the expanded log detail |
+| Function                  | Returns                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| `getCardBody()`           | The stats card container element                                   |
+| `getLastLogBody()`        | The today's log section wrapper                                    |
+| `getLatestLog(parentEle)` | The latest log row's clickable span                                |
+| `getLogData()`            | NodeList of `span.ng-star-inserted` inside the expanded log detail |
 
 ---
 
 ### 🟠 Parsing
 
 #### `parseClockIn(logData)` → `string[]`
+
 Reads the second-to-last span in the expanded log detail (which contains the clock-in timestamp) and splits it into `["HH", "MM", "SS", "AM|PM"]` format.
 
 #### `computeFinalTime(logData)` → `{ fTime, logoutTime }`
+
 The core business logic:
 
 ```
@@ -285,17 +293,17 @@ Listens to the browser's **Navigation API** (`navigatesuccess`) so the script re
 
 ## ⚙️ Configuration & Constants
 
-| Constant | File | Default | Purpose |
-|---|---|---|---|
-| `CARD_BODY_XPATH` | `contentScript.js` | *(long XPath)* | Where to inject the widget |
-| `LAST_LOG_BODY_XPATH` | `contentScript.js` | *(long XPath)* | Log list wrapper |
-| `LAST_LOG_XPATH` | `contentScript.js` | *(long XPath)* | Clickable log row |
-| `LOG_DATA_XPATH` | `contentScript.js` | *(long XPath)* | Expanded detail spans |
-| Target hours (full day) | `contentScript.js` | `9` | Hardcoded in `computeLogoutTime` |
-| Target hours (half day) | `contentScript.js` | `5` | When `.badge` element found |
-| Max retries | `contentScript.js` | `10` | In `runWithRetry()` |
-| Retry delay | `contentScript.js` | `1000 ms` | In `runWithRetry()` |
-| Initial delay | `contentScript.js` | `1000 ms` | In `handleUrlChange()` |
+| Constant                | File               | Default        | Purpose                          |
+| ----------------------- | ------------------ | -------------- | -------------------------------- |
+| `CARD_BODY_XPATH`       | `contentScript.js` | _(long XPath)_ | Where to inject the widget       |
+| `LAST_LOG_BODY_XPATH`   | `contentScript.js` | _(long XPath)_ | Log list wrapper                 |
+| `LAST_LOG_XPATH`        | `contentScript.js` | _(long XPath)_ | Clickable log row                |
+| `LOG_DATA_XPATH`        | `contentScript.js` | _(long XPath)_ | Expanded detail spans            |
+| Target hours (full day) | `contentScript.js` | `9`            | Hardcoded in `computeLogoutTime` |
+| Target hours (half day) | `contentScript.js` | `5`            | When `.badge` element found      |
+| Max retries             | `contentScript.js` | `10`           | In `runWithRetry()`              |
+| Retry delay             | `contentScript.js` | `1000 ms`      | In `runWithRetry()`              |
+| Initial delay           | `contentScript.js` | `1000 ms`      | In `handleUrlChange()`           |
 
 ---
 
@@ -303,15 +311,15 @@ Listens to the browser's **Navigation API** (`navigatesuccess`) so the script re
 
 All widget styles are in [`contentScript.css`](./contentScript.css) and are injected alongside the script via `manifest.json`.
 
-| Class | Purpose |
-|---|---|
-| `.keka-ext-wrapper` | Flex column container wrapping the time row and logout line |
-| `.keka-ext-row` | Flex row wrapping the icon, time label, and refresh button |
-| `.keka-ext-label` | 18px semi-bold time display |
-| `.keka-ext-btn` | Refresh button — starts at `opacity: 0`, `rotate: 0deg` |
-| `.keka-ext-btn.spin` | Added by JS to trigger the 2-second spin + fade-in transition |
-| `.keka-ext-logout-time` | Logout time subtitle row (13px, muted grey) |
-| `.keka-ext-logout-time.hidden` | Hides the logout row when no logout time is available |
+| Class                          | Purpose                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `.keka-ext-wrapper`            | Flex column container wrapping the time row and logout line   |
+| `.keka-ext-row`                | Flex row wrapping the icon, time label, and refresh button    |
+| `.keka-ext-label`              | 18px semi-bold time display                                   |
+| `.keka-ext-btn`                | Refresh button — starts at `opacity: 0`, `rotate: 0deg`       |
+| `.keka-ext-btn.spin`           | Added by JS to trigger the 2-second spin + fade-in transition |
+| `.keka-ext-logout-time`        | Logout time subtitle row (13px, muted grey)                   |
+| `.keka-ext-logout-time.hidden` | Hides the logout row when no logout time is available         |
 
 ---
 
@@ -332,8 +340,8 @@ All extension logs are prefixed with a coloured `Keka Ext` badge in the browser 
 
 ## 📜 Permissions
 
-| Permission | Reason |
-|---|---|
+| Permission                               | Reason                                                  |
+| ---------------------------------------- | ------------------------------------------------------- |
 | `host_permissions: https://*.keka.com/*` | Allows the content script to run on all Keka subdomains |
 
 > [!NOTE]

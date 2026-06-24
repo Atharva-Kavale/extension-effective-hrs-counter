@@ -93,8 +93,9 @@
     // Parse the clock-in parts without mutating the original array
     const parts = [...lDate];
     const period = parts.pop(); // "AM" or "PM"
+
     const normalizedDate = parts.map((r, i) =>
-      i === 0 && period === "PM" ? parseInt(r) + 12 : parseInt(r),
+      i === 0 && period === "PM" && r !== "12" ? parseInt(r) + 12 : parseInt(r),
     );
 
     const previousSeconds = dateArrToSec(normalizedDate);

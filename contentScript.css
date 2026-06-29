@@ -25,9 +25,7 @@
   padding: 15px;
   border-radius: 50%;
   cursor: pointer;
-  transition:
-    transform 2000ms,
-    opacity 2000ms;
+  transition: transform 2000ms, opacity 2000ms;
   transform: rotate(0deg);
   opacity: 0;
 }
@@ -48,4 +46,95 @@
 /* Utility — hides the logout row when no logout time is available */
 .keka-ext-logout-time.hidden {
   display: none;
+}
+
+/* ── Custom Hours Control ──────────────────────────────────────────────── */
+
+/* Row that holds the Set Custom Hours button + inline input group */
+.keka-ext-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+/* Toggle button — solid blue */
+.keka-ext-custom-btn {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.keka-ext-custom-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Inline input group */
+.keka-ext-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Utility — hides the input group by default */
+.keka-ext-input-group.hidden {
+  display: none;
+}
+
+/* Text input — compact width, subtle fill */
+.keka-ext-time-input {
+  width: 52px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 5px;
+  color: #374151;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  outline: none;
+}
+
+.keka-ext-time-input:focus {
+  border-color: #9ca3af;
+  background: #fff;
+}
+
+/* Shared base for confirm ✓ and reset ✕ buttons */
+.keka-ext-confirm-btn,
+.keka-ext-reset-btn {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  border: 1px solid;
+}
+
+/* Confirm ✓ — soft green */
+.keka-ext-confirm-btn {
+  color: #15803d;
+  background: #dcfce7;
+  border-color: #bbf7d0;
+}
+
+.keka-ext-confirm-btn:hover {
+  background: #bbf7d0;
+}
+
+/* Reset ✕ — soft red */
+.keka-ext-reset-btn {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.keka-ext-reset-btn:hover {
+  background: #fecaca;
 }

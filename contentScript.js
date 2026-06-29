@@ -127,10 +127,16 @@
    * @param {boolean} isHalfDay - true if a half-day badge is present (target = 5h, else 9h)
    * @returns {string|null} e.g. "6:30 PM", or null if target already met
    */
+  // Persists across re-renders; null means "use default (9h or 5h)"
+  let customTargetMinutes = null;
+
   function computeLogoutTime(fTime, isHalfDay) {
-    const totalHours = isHalfDay ? 5 : 9;
+    const totalMins =
+      customTargetMinutes !== null
+        ? customTargetMinutes
+        : (isHalfDay ? 5 : 9) * 60;
     const effectiveMins = parseInt(fTime) * 60 + parseInt(fTime.split(": ")[1]);
-    const remainingMins = totalHours * 60 - effectiveMins;
+    const remainingMins = totalMins - effectiveMins;
     if (remainingMins <= 0) return null;
     const logout = new Date(Date.now() + (remainingMins + 1) * 60_000);
     return logout.toLocaleTimeString([], {
@@ -242,6 +248,7 @@
     const div1 = createElement("div");
     const div2 = createElement("div");
     const div3 = createElement("div");
+    const div4 = createElement("div");
 
     const logoutTimeEl = createElement("div");
 
@@ -274,14 +281,92 @@
     });
     div3.appendChild(refreshImg);
 
+    // Div 4: Custom target hours control
+    div4.className = "keka-ext-custom-row";
+
+    // ── Set Custom Hours button ──
+    const setCustomBtn = createElement("button");
+    setCustomBtn.innerText =
+      customTargetMinutes !== null ? "Edit custom hours" : "Set custom hours";
+    setCustomBtn.className = "keka-ext-custom-btn";
+
+    // ── Inline input group (hidden by default) ──
+    const inputGroup = createElement("div");
+    inputGroup.className = "keka-ext-input-group hidden";
+
+    const timeInput = createElement("input");
+    timeInput.type = "text";
+    timeInput.inputMode = "numeric";
+    timeInput.placeholder = "8:15";
+    timeInput.pattern = "[0-9]{1,2}:[0-9]{2}";
+    timeInput.className = "keka-ext-time-input";
+    if (customTargetMinutes !== null) {
+      const h = Math.floor(customTargetMinutes / 60);
+      const m = String(customTargetMinutes % 60).padStart(2, "0");
+      timeInput.value = `${h}:${m}`;
+    }
+
+    const confirmBtn = createElement("button");
+    confirmBtn.innerText = "✓";
+    confirmBtn.title = "Apply custom target";
+    confirmBtn.className = "keka-ext-confirm-btn";
+
+    const resetBtn = createElement("button");
+    resetBtn.innerText = "✕";
+    resetBtn.title = "Reset to default (9h / 5h)";
+    resetBtn.className = "keka-ext-reset-btn";
+
+    inputGroup.appendChild(timeInput);
+    inputGroup.appendChild(confirmBtn);
+    inputGroup.appendChild(resetBtn);
+
+    // ── Toggle input group visibility ──
+    setCustomBtn.addEventListener("click", () => {
+      inputGroup.classList.toggle("hidden");
+      timeInput.focus();
+    });
+
+    // ── Confirm: parse input and re-render ──
+    function applyCustomTime() {
+      const raw = timeInput.value.trim();
+      const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+      const h = Number(match?.[1]);
+      const m = Number(match?.[2]);
+      if (!match || m > 59) {
+        timeInput.style.borderColor = "#ef4444";
+        setTimeout(() => (timeInput.style.borderColor = ""), 1500);
+        return;
+      }
+      customTargetMinutes = h * 60 + m;
+      cBody.removeChild(cBody.lastChild);
+      scriptRunner();
+    }
+
+    confirmBtn.addEventListener("click", applyCustomTime);
+    timeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") applyCustomTime();
+      if (e.key === "Escape") inputGroup.classList.add("hidden");
+    });
+
+    // ── Reset: clear override and re-render ──
+    resetBtn.addEventListener("click", () => {
+      customTargetMinutes = null;
+      cBody.removeChild(cBody.lastChild);
+      scriptRunner();
+    });
+
+    div4.appendChild(setCustomBtn);
+    div4.appendChild(inputGroup);
+
     finalTimerDisplayEl.appendChild(div1);
     finalTimerDisplayEl.appendChild(div2);
     finalTimerDisplayEl.appendChild(div3);
+    finalTimerDisplayEl.appendChild(div4);
     finalTimerDisplayEl.className = "keka-ext-row";
 
     logoutTimeEl.className = "keka-ext-logout-time";
     if (logoutTime) {
-      logoutTimeEl.innerText = `Logout time : ${logoutTime}`;
+      logoutTimeEl.innerText = `Logout time ${timeInput.value ? `(${timeInput.value})` : ""} : ${logoutTime}`;
     } else {
       logoutTimeEl.classList.add("hidden");
     }

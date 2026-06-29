@@ -25,7 +25,9 @@
   padding: 15px;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 2000ms, opacity 2000ms;
+  transition:
+    transform 2000ms,
+    opacity 2000ms;
   transform: rotate(0deg);
   opacity: 0;
 }

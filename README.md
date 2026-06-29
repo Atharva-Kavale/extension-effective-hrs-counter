@@ -24,6 +24,7 @@
 | ---------------------------- | ------------------------------------------------------------------------------ |
 | 🕐 **Live Effective Hours**  | Calculates and displays your total effective hours in real-time                |
 | 🚪 **Suggested Logout Time** | Tells you exactly when to leave to complete 9h (or 5h on half-days)            |
+| ⏱ **Custom Target Hours**    | Override the 9h/5h target with any custom duration (e.g. 8:15) per session     |
 | 🔄 **Refresh Button**        | Manually re-triggers the calculation without a page reload                     |
 | 📅 **Half-Day Support**      | Automatically detects badge half-day markers and targets 5h instead of 9h      |
 | 🔁 **Auto-Retry**            | Retries up to 10 times (1 s apart) if the page hasn't fully loaded yet         |
@@ -96,13 +97,15 @@ Page Load / URL Change
         │
         ▼
   Compute suggested logout time
-  (target = 9h, or 5h if half-day badge detected)
+  (target = customTargetMinutes if set, else 9h or 5h if half-day)
         │
         ▼
   Inject widget into attendance stats card
         │
         ▼
-  [Refresh button] → remove widget → re-run scriptRunner()
+  [Refresh button]       → remove widget → re-run scriptRunner()
+  [Set custom hours btn] → show inline input → set custom target → re-render
+  [Reset btn]            → clear custom target → re-render with default target
 ```
 
 ---
@@ -193,16 +196,17 @@ Adds two `[hh, mm]` tuples (with minute carry-over) and returns `"Xh : Ym"`.
 Calculates the suggested logout time so total effective hours reach the target.
 
 ```
-Target hours:
-  ├── 9h  → standard day  (isHalfDay = false)
-  └── 5h  → half-day      (isHalfDay = true)
+Target minutes:
+  ├── customTargetMinutes  → if the user has set a custom duration (e.g. 8:15 = 495 min)
+  ├── 9 × 60 = 540 min    → standard day  (isHalfDay = false, no custom override)
+  └── 5 × 60 = 300 min    → half-day      (isHalfDay = true,  no custom override)
 
 Returns null if the target has already been exceeded.
 ```
 
 > [!NOTE]
-> `isHalfDay` is resolved by the caller (`computeFinalTime`) via a single DOM check,
-> keeping this function pure with no side-effects.
+> `customTargetMinutes` is a module-level variable (session-scoped). It persists across
+> re-renders until the user clicks **Reset** or reloads the page.
 
 ---
 
@@ -245,16 +249,22 @@ Else:
 Builds and injects the widget DOM into the Keka stats card:
 
 ```
-┌──────────────────────────────┐
-│  🕐  8h : 45m          🔄   │
-│  Logout time : 6:15 PM       │
-└──────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  🕐  8h : 45m                              🔄    │
+│  Logout time (8:15) : 5:45 PM                    │
+│  [SET CUSTOM HOURS]  [ 8:15 ] [✓] [✕]           │
+└──────────────────────────────────────────────────┘
 ```
 
 - **Clock icon** (`clock.svg`) on the left
 - **Time label** (`.keka-ext-label`) in the centre
 - **Refresh button** (`refresh.png`) on the right — spins in with a 2-second CSS transition on first render
-- **Logout time** row below (hidden if `null`)
+- **Logout time** row below — shows the custom target in parentheses when a custom duration is active (e.g. `Logout time (8:15) : 5:45 PM`); hidden if `null`
+- **Custom hours control** row at the bottom:
+  - **Set Custom Hours** button (blue, uppercase) — toggles an inline input
+  - **Text input** (`HH:MM` format, e.g. `8:15`) — sets a custom target duration
+  - **✓ Confirm** button — validates and applies the custom target; re-renders the widget
+  - **✕ Reset** button — clears the override and reverts to the default 9h / 5h target
 
 Any previously injected widget is removed before re-rendering to avoid duplicates.
 
@@ -293,17 +303,18 @@ Listens to the browser's **Navigation API** (`navigatesuccess`) so the script re
 
 ## ⚙️ Configuration & Constants
 
-| Constant                | File               | Default        | Purpose                          |
-| ----------------------- | ------------------ | -------------- | -------------------------------- |
-| `CARD_BODY_XPATH`       | `contentScript.js` | _(long XPath)_ | Where to inject the widget       |
-| `LAST_LOG_BODY_XPATH`   | `contentScript.js` | _(long XPath)_ | Log list wrapper                 |
-| `LAST_LOG_XPATH`        | `contentScript.js` | _(long XPath)_ | Clickable log row                |
-| `LOG_DATA_XPATH`        | `contentScript.js` | _(long XPath)_ | Expanded detail spans            |
-| Target hours (full day) | `contentScript.js` | `9`            | Hardcoded in `computeLogoutTime` |
-| Target hours (half day) | `contentScript.js` | `5`            | When `.badge` element found      |
-| Max retries             | `contentScript.js` | `10`           | In `runWithRetry()`              |
-| Retry delay             | `contentScript.js` | `1000 ms`      | In `runWithRetry()`              |
-| Initial delay           | `contentScript.js` | `1000 ms`      | In `handleUrlChange()`           |
+| Constant                | File               | Default        | Purpose                                       |
+| ----------------------- | ------------------ | -------------- | --------------------------------------------- |
+| `CARD_BODY_XPATH`       | `contentScript.js` | _(long XPath)_ | Where to inject the widget                    |
+| `LAST_LOG_BODY_XPATH`   | `contentScript.js` | _(long XPath)_ | Log list wrapper                              |
+| `LAST_LOG_XPATH`        | `contentScript.js` | _(long XPath)_ | Clickable log row                             |
+| `LOG_DATA_XPATH`        | `contentScript.js` | _(long XPath)_ | Expanded detail spans                         |
+| `customTargetMinutes`   | `contentScript.js` | `null`         | Custom target duration in minutes (session)   |
+| Target hours (full day) | `contentScript.js` | `9`            | Used when no custom target and not half-day   |
+| Target hours (half day) | `contentScript.js` | `5`            | Used when `.badge` found and no custom target |
+| Max retries             | `contentScript.js` | `10`           | In `runWithRetry()`                           |
+| Retry delay             | `contentScript.js` | `1000 ms`      | In `runWithRetry()`                           |
+| Initial delay           | `contentScript.js` | `1000 ms`      | In `handleUrlChange()`                        |
 
 ---
 
@@ -320,6 +331,13 @@ All widget styles are in [`contentScript.css`](./contentScript.css) and are inje
 | `.keka-ext-btn.spin`           | Added by JS to trigger the 2-second spin + fade-in transition |
 | `.keka-ext-logout-time`        | Logout time subtitle row (13px, muted grey)                   |
 | `.keka-ext-logout-time.hidden` | Hides the logout row when no logout time is available         |
+| `.keka-ext-custom-row`         | Flex row holding the custom hours button and input group      |
+| `.keka-ext-custom-btn`         | Blue uppercase toggle button for the custom hours input       |
+| `.keka-ext-input-group`        | Flex row with the time input, confirm, and reset buttons      |
+| `.keka-ext-input-group.hidden` | Hides the input group by default                              |
+| `.keka-ext-time-input`         | Compact 52px text field for entering custom duration          |
+| `.keka-ext-confirm-btn`        | Green ✓ button — applies the custom target                    |
+| `.keka-ext-reset-btn`          | Red ✕ button — clears the custom target, reverts to default   |
 
 ---
 

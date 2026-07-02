@@ -1,6 +1,7 @@
 (() => {
   // ── State ─────────────────────────────────────────────────────────────────
   let count = 0;
+  let customTargetMinutes = null; // null = use default (9h full-day / 5h half-day)
 
   // ── Logger ────────────────────────────────────────────────────────────────
   // Uses %c CSS styling so extension logs stand out from the site's own output.
@@ -127,9 +128,6 @@
    * @param {boolean} isHalfDay - true if a half-day badge is present (target = 5h, else 9h)
    * @returns {string|null} e.g. "6:30 PM", or null if target already met
    */
-  // Persists across re-renders; null means "use default (9h or 5h)"
-  let customTargetMinutes = null;
-
   function computeLogoutTime(fTime, isHalfDay) {
     const totalMins =
       customTargetMinutes !== null
@@ -222,67 +220,14 @@
   // ── Rendering ─────────────────────────────────────────────────────────────
 
   /**
-   * Builds and injects the effective-hours display widget into the card body.
-   * Removes any previously injected widget before re-rendering.
-   * @param {boolean}     flagLog    - Whether the user has a clock-in log today
-   * @param {string}      fTime      - Formatted time string to display (e.g. "8h : 30m")
-   * @param {string|null} logoutTime - Suggested logout time in AM/PM (e.g. "6:30 PM"), or null
-   * @param {Element}     cBody      - The card-body DOM element to render into
+   * Builds the "Set custom hours" button and its inline input group.
+   * Wires up all associated events (toggle, confirm, reset, keyboard).
+   * @param {Element} cBody - The card-body element, used as the re-render target
+   * @returns {{ customHoursRow: Element, inputGroup: Element }}
    */
-  function paintToDOM(flagLog, fTime, logoutTime, cBody) {
-    if (!cBody) {
-      logger.warn(
-        "Card body not found in DOM — is the attendance page fully loaded?",
-      );
-      return;
-    }
-
-    if (cBody.children.length > 1) {
-      cBody.removeChild(cBody.lastChild);
-    }
-
-    const wrapper = createElement("div");
-    wrapper.className = "keka-ext-wrapper";
-
-    const finalTimerDisplayEl = createElement("div");
-    const div1 = createElement("div");
-    const div2 = createElement("div");
-    const div3 = createElement("div");
-    const div4 = createElement("div");
-
-    const logoutTimeEl = createElement("div");
-
-    // Div1: clock icon
-    const timerImg = createElement("img");
-    timerImg.src = chrome.runtime.getURL("assets/clock.svg");
-    timerImg.width = "30";
-    div1.appendChild(timerImg);
-
-    // Div2: time label
-    const timerSpan = createElement("span");
-    timerSpan.innerText = flagLog ? fTime : "User not logged yet";
-    timerSpan.className = "keka-ext-label";
-    div2.appendChild(timerSpan);
-
-    // Div3: refresh button
-    const refreshImg = createElement("img");
-    refreshImg.src = chrome.runtime.getURL("assets/refresh.png");
-    refreshImg.className = "keka-ext-btn";
-
-    // Double requestAnimationFrame ensures the browser has painted the
-    // initial state (opacity:0, rotate:0) before the transition fires.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => refreshImg.classList.add("spin"));
-    });
-
-    refreshImg.addEventListener("click", () => {
-      cBody.removeChild(cBody.lastChild);
-      scriptRunner();
-    });
-    div3.appendChild(refreshImg);
-
-    // Div 4: Custom target hours control
-    div4.className = "keka-ext-custom-row";
+  function buildCustomHoursUI(cBody) {
+    const customHoursRow = createElement("div");
+    customHoursRow.className = "keka-ext-custom-row";
 
     // ── Set Custom Hours button ──
     const setCustomBtn = createElement("button");
@@ -355,24 +300,95 @@
       scriptRunner();
     });
 
-    div4.appendChild(setCustomBtn);
-    div4.appendChild(inputGroup);
+    customHoursRow.appendChild(setCustomBtn);
 
-    finalTimerDisplayEl.appendChild(div1);
-    finalTimerDisplayEl.appendChild(div2);
-    finalTimerDisplayEl.appendChild(div3);
-    finalTimerDisplayEl.appendChild(div4);
-    finalTimerDisplayEl.className = "keka-ext-row";
+    return { customHoursRow, inputGroup };
+  }
 
+  /**
+   * Builds and injects the effective-hours display widget into the card body.
+   * Removes any previously injected widget before re-rendering.
+   * @param {boolean}     flagLog    - Whether the user has a clock-in log today
+   * @param {string}      fTime      - Formatted time string to display (e.g. "8h : 30m")
+   * @param {string|null} logoutTime - Suggested logout time in AM/PM (e.g. "6:30 PM"), or null
+   * @param {Element}     cBody      - The card-body DOM element to render into
+   */
+  function paintToDOM(flagLog, fTime, logoutTime, cBody) {
+    if (!cBody) {
+      logger.warn(
+        "Card body not found in DOM — is the attendance page fully loaded?",
+      );
+      return;
+    }
+
+    if (cBody.children.length > 1) {
+      cBody.removeChild(cBody.lastChild);
+    }
+
+    const wrapper = createElement("div");
+    wrapper.className = "keka-ext-wrapper";
+
+    // ── Primary row: clock icon | time label | refresh button | custom hours ──
+    const primaryRow = createElement("div");
+    primaryRow.className = "keka-ext-row";
+
+    const iconCol = createElement("div");
+    const timerImg = createElement("img");
+    timerImg.src = chrome.runtime.getURL("assets/clock.svg");
+    timerImg.width = "30";
+    iconCol.appendChild(timerImg);
+
+    const labelCol = createElement("div");
+    const timerSpan = createElement("span");
+    timerSpan.innerText = flagLog ? fTime : "User not logged yet";
+    timerSpan.className = "keka-ext-label";
+    labelCol.appendChild(timerSpan);
+
+    const refreshCol = createElement("div");
+    const refreshImg = createElement("img");
+    refreshImg.src = chrome.runtime.getURL("assets/refresh.png");
+    refreshImg.className = "keka-ext-btn";
+
+    // Double requestAnimationFrame ensures the browser has painted the
+    // initial state (opacity:0, rotate:0) before the transition fires.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => refreshImg.classList.add("spin"));
+    });
+
+    refreshImg.addEventListener("click", () => {
+      cBody.removeChild(cBody.lastChild);
+      scriptRunner();
+    });
+    refreshCol.appendChild(refreshImg);
+
+    const { customHoursRow, inputGroup } = buildCustomHoursUI(cBody);
+
+    primaryRow.appendChild(iconCol);
+    primaryRow.appendChild(labelCol);
+    primaryRow.appendChild(refreshCol);
+    primaryRow.appendChild(customHoursRow);
+
+    // ── Secondary row: logout time | custom hours input group ──
+    const secondaryRow = createElement("div");
+    secondaryRow.className = "keka-ext-row";
+    secondaryRow.style.gap = "2rem";
+
+    const logoutTimeEl = createElement("div");
     logoutTimeEl.className = "keka-ext-logout-time";
     if (logoutTime) {
-      logoutTimeEl.innerText = `Logout time ${timeInput.value ? `(${timeInput.value})` : ""} : ${logoutTime}`;
+      const timeInputValue = inputGroup.querySelector(
+        ".keka-ext-time-input",
+      ).value;
+      logoutTimeEl.innerText = `Logout time ${timeInputValue ? `(${timeInputValue})` : ""} : ${logoutTime}`;
     } else {
       logoutTimeEl.classList.add("hidden");
     }
 
-    wrapper.appendChild(finalTimerDisplayEl);
-    wrapper.appendChild(logoutTimeEl);
+    secondaryRow.appendChild(logoutTimeEl);
+    secondaryRow.appendChild(inputGroup);
+
+    wrapper.appendChild(primaryRow);
+    wrapper.appendChild(secondaryRow);
 
     cBody.appendChild(wrapper);
   }
@@ -411,7 +427,7 @@
     latestLog.click();
   }
 
-  // ── Retry logic ───────────────────────────────────────────────────────────
+  // ── Entry point ───────────────────────────────────────────────────────────
 
   /**
    * Wraps scriptRunner() in a try/catch and retries up to 10 times (1 s apart).
@@ -427,8 +443,6 @@
       if (count < 10) setTimeout(runWithRetry, 1000);
     }
   }
-
-  // ── Entry point ───────────────────────────────────────────────────────────
 
   /**
    * Triggers the script when the URL matches the attendance logs page.
